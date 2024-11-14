@@ -83,13 +83,13 @@ class VOCSegmentation(data.Dataset):
     """
     cmap = voc_cmap()
     def find_file(root_dir, target_filename):
-    # Walk through all subdirectories and files in the root directory
-    for dirpath, _, filenames in os.walk(root_dir):
-        # Check if the target file is in the current directory's files
-        if target_filename in filenames:
-            # Save the full path of the found file
-            full_path = os.path.join(dirpath, target_filename)
-            return full_path
+        # Walk through all subdirectories and files in the root directory
+        for dirpath, _, filenames in os.walk(root_dir):
+            # Check if the target file is in the current directory's files
+            if target_filename in filenames:
+                # Save the full path of the found file
+                full_path = os.path.join(dirpath, target_filename)
+                return full_path
     
     # Return None if the file is not found
     return None
