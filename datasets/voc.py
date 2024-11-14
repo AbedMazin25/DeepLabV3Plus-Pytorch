@@ -132,8 +132,8 @@ class VOCSegmentation(data.Dataset):
             split_f = os.path.join( self.root, 'train_aug.txt')#'./datasets/data/train_aug.txt'
             print(self.root)
             # Example usage
-            print("Current Working Directory:", os.getcwd
-            root_directory = os.getcwd
+            print("Current Working Directory:", os.getcwd())
+            root_directory = os.getcwd()
             file_name = 'train_aug.txt'
             file_path = find_file(root_directory, file_name)
             splif_f = file_path
