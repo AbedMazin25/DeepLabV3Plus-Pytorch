@@ -82,6 +82,18 @@ class VOCSegmentation(data.Dataset):
             and returns a transformed version. E.g, ``transforms.RandomCrop``
     """
     cmap = voc_cmap()
+    def find_file(root_dir, target_filename):
+    # Walk through all subdirectories and files in the root directory
+    for dirpath, _, filenames in os.walk(root_dir):
+        # Check if the target file is in the current directory's files
+        if target_filename in filenames:
+            # Save the full path of the found file
+            full_path = os.path.join(dirpath, target_filename)
+            return full_path
+    
+    # Return None if the file is not found
+    return None
+
     def __init__(self,
                  root,
                  year='2012',
@@ -119,7 +131,11 @@ class VOCSegmentation(data.Dataset):
             assert os.path.exists(mask_dir), "SegmentationClassAug not found, please refer to README.md and prepare it manually"
             split_f = os.path.join( self.root, 'train_aug.txt')#'./datasets/data/train_aug.txt'
             print(self.root)
-            splif_f = './DeepLabV3Plus-Pytorch/datasets/data/train_aug.txt'
+            # Example usage
+            root_directory = self.root
+            file_name = 'train_aug.txt'
+            file_path = find_file(root_directory, file_name)
+            splif_f = file_path
         else:
             mask_dir = os.path.join(voc_root, 'SegmentationClass')
             splits_dir = os.path.join(voc_root, 'ImageSets/Segmentation')
