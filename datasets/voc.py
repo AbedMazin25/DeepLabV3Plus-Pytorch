@@ -124,6 +124,7 @@ class VOCSegmentation(data.Dataset):
             splits_dir = os.path.join(voc_root, 'ImageSets/Segmentation')
             split_f = os.path.join(splits_dir, image_set.rstrip('\n') + '.txt')
         print(splif_f)
+        print(os.path.exists(split_f))
 
         if not os.path.exists(split_f):
             raise ValueError(
