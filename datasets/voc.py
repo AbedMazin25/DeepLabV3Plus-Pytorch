@@ -82,17 +82,17 @@ class VOCSegmentation(data.Dataset):
             and returns a transformed version. E.g, ``transforms.RandomCrop``
     """
     cmap = voc_cmap()
-    # def find_file(root_dir, target_filename):
-    #     # Walk through all subdirectories and files in the root directory
-    #     for dirpath, _, filenames in os.walk(root_dir):
-    #         # Check if the target file is in the current directory's files
-    #         if target_filename in filenames:
-    #             # Save the full path of the found file
-    #             full_path = os.path.join(dirpath, target_filename)
-    #             return full_path
+    def find_file(root_dir, target_filename):
+        # Walk through all subdirectories and files in the root directory
+        for dirpath, _, filenames in os.walk(root_dir):
+            # Check if the target file is in the current directory's files
+            if target_filename in filenames:
+                # Save the full path of the found file
+                full_path = os.path.join(dirpath, target_filename)
+                return full_path
     
-    # # Return None if the file is not found
-    # return None
+        # Return None if the file is not found
+        return None
 
     def __init__(self,
                  root,
@@ -132,8 +132,11 @@ class VOCSegmentation(data.Dataset):
             split_f = os.path.join( self.root, 'train_aug.txt')#'./datasets/data/train_aug.txt'
             print(self.root)
             # Example usage
-            print("Current Working Directory:", os.getcwd())
-            splif_f = '../DeepLabV3Plus-Pytorch/datasets/data/train_aug.txt'
+            print("Current Working Directory:", os.getcwd
+            root_directory = os.getcwd
+            file_name = 'train_aug.txt'
+            file_path = find_file(root_directory, file_name)
+            splif_f = file_path
         else:
             mask_dir = os.path.join(voc_root, 'SegmentationClass')
             splits_dir = os.path.join(voc_root, 'ImageSets/Segmentation')
