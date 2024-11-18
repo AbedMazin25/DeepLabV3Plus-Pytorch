@@ -8,6 +8,62 @@ from .utils import _SimpleSegmentationModel
 __all__ = ["DeepLabV3"]
 
 
+def PSO_select_channels(output, num_channels=9, num_particles=9, num_iterations=100):
+    num_filters = output.shape[1]  # Number of channels in the layer
+
+    # Debugging information
+    # print("Number of filters (num_filters):", num_filters)
+    # print("Number of channels to select (num_channels):", num_channels)
+
+    # Check if the number of channels is valid
+    if num_filters < num_channels:
+        raise ValueError("Number of filters is less than the number of channels to select.")
+
+    # Adjust the number of channels if necessary
+    num_channels = min(num_channels, num_filters)
+
+    # Initial random values for particles
+    particles = torch.randint(0, num_filters, (num_particles, num_channels), dtype=torch.float32)  # Initial positions
+    velocities = torch.zeros_like(particles)  # Initial velocities
+
+    # Objective function: Minimize the sum of selected pixel values
+    def objective_function(particle):
+        selected_pixels = output[:, particle.long(), :, :].sum(dim=(1, 2, 3))  # Select pixels based on particle positions
+        return selected_pixels.sum()  # Total sum of the selected pixel values
+
+    # PSO parameters
+    inertia_weight = 0.7
+    cognitive_constant = 1.5
+    social_constant = 1.5
+
+    # Best particle positions and global best position
+    best_particle_positions = particles.clone()
+    best_particle_scores = torch.tensor([objective_function(p) for p in particles])
+    global_best_position = particles[best_particle_scores.argmin()]
+    global_best_score = best_particle_scores.min()
+
+    for iteration in range(num_iterations):  # Number of PSO iterations
+        for i, particle in enumerate(particles):
+            # Update particle velocities
+            velocities[i] = (inertia_weight * velocities[i]
+                             + cognitive_constant * torch.rand(1) * (best_particle_positions[i] - particle)
+                             + social_constant * torch.rand(1) * (global_best_position - particle))
+
+            # Update particle positions
+            particles[i] = particles[i] + velocities[i]
+            particles[i] = torch.clamp(particles[i], 0, num_filters - 1)  # Clamp particle positions
+
+            # Calculate fitness and update best positions
+            current_fitness = objective_function(particles[i])
+            if current_fitness < best_particle_scores[i]:
+                best_particle_positions[i] = particles[i]
+                best_particle_scores[i] = current_fitness
+            if current_fitness < global_best_score:
+                global_best_position = particles[i]
+                global_best_score = current_fitness
+
+    return global_best_position.long()  # Return the optimal channel positions
+
 class DeepLabV3(_SimpleSegmentationModel):
     """
     Implements DeepLabV3 model from
@@ -135,30 +191,65 @@ class ASPP(nn.Module):
         super(ASPP, self).__init__()
         out_channels = 256
         modules = []
+        
+        # Standard ASPP layers
         modules.append(nn.Sequential(
             nn.Conv2d(in_channels, out_channels, 1, bias=False),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True)))
-
+        
         rate1, rate2, rate3 = tuple(atrous_rates)
         modules.append(ASPPConv(in_channels, out_channels, rate1))
         modules.append(ASPPConv(in_channels, out_channels, rate2))
         modules.append(ASPPConv(in_channels, out_channels, rate3))
+        
+        # Image pooling layer
         modules.append(ASPPPooling(in_channels, out_channels))
-
-        self.convs = nn.ModuleList(modules)
-
+        
+        # Max pooling convolution for PSO
+        self.max_pooling_conv = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, 1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
+        
+        # PSO-based channel selection convolution
+        self.selected_conv = nn.Sequential(
+            nn.Conv2d(9, out_channels, 1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
+        
+        # Combine results into a single tensor
         self.project = nn.Sequential(
-            nn.Conv2d(5 * out_channels, out_channels, 1, bias=False),
+            nn.Conv2d(6 * out_channels, out_channels, 1, bias=False),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.1),)
+            nn.Dropout(0.1)
+        )
+        
+        self.convs = nn.ModuleList(modules)
 
     def forward(self, x):
-        res = []
-        for conv in self.convs:
-            res.append(conv(x))
+        # Process through all standard ASPP layers
+        res = [conv(x) for conv in self.convs]
+        
+        # Add max pooling convolution
+        x_max_pooled = self.max_pooling_conv(x)
+        
+        # Use PSO to select the best 9 channels
+        best_channels = PSO_select_channels(x_max_pooled)  # PSO-based selection
+        x_selected = x_max_pooled[:, best_channels, :, :]  # Extract selected channels
+        
+        # Apply selected convolution to the chosen channels
+        x_selected_conv = self.selected_conv(x_selected)
+        
+        # Append selected channels to the results
+        res.append(x_selected_conv)
+        
+        # Concatenate all processed features
         res = torch.cat(res, dim=1)
+        
         return self.project(res)
 
 
