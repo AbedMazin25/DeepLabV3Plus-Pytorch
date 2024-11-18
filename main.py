@@ -77,7 +77,7 @@ def get_argparser():
                         help="print interval of loss (default: 10)")
     parser.add_argument("--val_interval", type=int, default=100,
                         help="epoch interval for eval (default: 100)")
-    parser.add_argument("--download", action='store_true', default=False,
+    parser.add_argument("--download", action='store_true', default=True,
                         help="download datasets")
 
     # PASCAL VOC Options
@@ -124,9 +124,9 @@ def get_dataset(opts):
                                 std=[0.229, 0.224, 0.225]),
             ])
         train_dst = VOCSegmentation(root=opts.data_root, year=opts.year,
-                                    image_set='train', download=True, transform=train_transform)
+                                    image_set='train', download=opts.download, transform=train_transform)
         val_dst = VOCSegmentation(root=opts.data_root, year=opts.year,
-                                  image_set='val', download=True, transform=val_transform)
+                                  image_set='val', download=False, transform=val_transform)
 
     if opts.dataset == 'cityscapes':
         train_transform = et.ExtCompose([
@@ -290,10 +290,10 @@ def main():
     cur_epochs = 0
     if opts.ckpt is not None and os.path.isfile(opts.ckpt):
         # https://github.com/VainF/DeepLabV3Plus-Pytorch/issues/8#issuecomment-605601402, @PytaichukBohdan
-        model.to(device)
-        checkpoint = torch.load(opts.ckpt, map_location=torch.device('cuda'))
+        checkpoint = torch.load(opts.ckpt, map_location=torch.device('cpu'))
         model.load_state_dict(checkpoint["model_state"])
         model = nn.DataParallel(model)
+        model.to(device)
         if opts.continue_training:
             optimizer.load_state_dict(checkpoint["optimizer_state"])
             scheduler.load_state_dict(checkpoint["scheduler_state"])
