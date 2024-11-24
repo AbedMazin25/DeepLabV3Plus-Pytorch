@@ -11,49 +11,51 @@ __all__ = ["DeepLabV3"]
 def PSO_select_channels(output, num_channels=9, num_particles=9, num_iterations=100):
     num_filters = output.shape[1]  # Number of channels in the layer
 
-    # Debugging information
-    # print("Number of filters (num_filters):", num_filters)
-    # print("Number of channels to select (num_channels):", num_channels)
-
-    # Check if the number of channels is valid
     if num_filters < num_channels:
         raise ValueError("Number of filters is less than the number of channels to select.")
 
-    # Adjust the number of channels if necessary
     num_channels = min(num_channels, num_filters)
 
-    # Initial random values for particles
-    particles = torch.randint(0, num_filters, (num_particles, num_channels), dtype=torch.float32)  # Initial positions
-    velocities = torch.zeros_like(particles)  # Initial velocities
+    particles = torch.randint(0, num_filters, (num_particles, num_channels), dtype=torch.float32)
+    velocities = torch.zeros_like(particles)
 
-    # Objective function: Minimize the sum of selected pixel values
     def objective_function(particle):
-        selected_pixels = output[:, particle.long(), :, :].sum(dim=(1, 2, 3))  # Select pixels based on particle positions
-        return selected_pixels.sum()  # Total sum of the selected pixel values
+        selected_pixels = output[:, particle.long(), :, :].sum(dim=(1, 2, 3))
+        return selected_pixels.sum()
 
-    # PSO parameters
-    inertia_weight = 0.7
-    cognitive_constant = 1.5
-    social_constant = 1.5
-
-    # Best particle positions and global best position
+    c1 = 2
+    c2 = 2
     best_particle_positions = particles.clone()
     best_particle_scores = torch.tensor([objective_function(p) for p in particles])
     global_best_position = particles[best_particle_scores.argmin()]
     global_best_score = best_particle_scores.min()
 
-    for iteration in range(num_iterations):  # Number of PSO iterations
+    for iteration in range(num_iterations):
+        t = iteration + 1
+
+        if t <= num_iterations / 5:
+            Q = 1
+            ZZ = Q * 0.5
+        else:
+            Q = 1 / (1 + torch.exp(((10 * t) - (10 * num_iterations)) / (num_iterations * (t / 5))))
+            ZZ = Q
+
+        if iteration >= num_iterations // 2:
+            sorted_indices = torch.argsort(best_particle_scores, descending=True)
+            num_worst = num_particles // 3
+            worst_indices = sorted_indices[:num_worst]
+            for idx in worst_indices:
+                best_particle_positions[idx] = torch.randint(0, num_filters, (num_channels,), dtype=torch.float32)
+
         for i, particle in enumerate(particles):
-            # Update particle velocities
-            velocities[i] = (inertia_weight * velocities[i]
-                             + cognitive_constant * torch.rand(1) * (best_particle_positions[i] - particle)
-                             + social_constant * torch.rand(1) * (global_best_position - particle))
+            rand = torch.rand_like(particle)
+            velocities[i] = (ZZ * velocities[i]
+                             + c1 * rand * (best_particle_positions[i] - particle)
+                             + c2 * rand * (global_best_position - particle))
+            
+            particles[i] = (1 - ZZ) * particles[i] + ZZ * velocities[i]
+            particles[i] = torch.clamp(particles[i], 0, num_filters - 1)
 
-            # Update particle positions
-            particles[i] = particles[i] + velocities[i]
-            particles[i] = torch.clamp(particles[i], 0, num_filters - 1)  # Clamp particle positions
-
-            # Calculate fitness and update best positions
             current_fitness = objective_function(particles[i])
             if current_fitness < best_particle_scores[i]:
                 best_particle_positions[i] = particles[i]
@@ -62,7 +64,8 @@ def PSO_select_channels(output, num_channels=9, num_particles=9, num_iterations=
                 global_best_position = particles[i]
                 global_best_score = current_fitness
 
-    return global_best_position.long()  # Return the optimal channel positions
+    return global_best_position.long()
+
 
 class DeepLabV3(_SimpleSegmentationModel):
     """
