@@ -37,7 +37,7 @@ def PSO_select_channels(output, num_channels=9, num_particles=9, num_iterations=
             Q = 1
             ZZ = Q * 0.5
         else:
-            Q = 1 / (1 + torch.exp(((10 * t) - (10 * num_iterations)) / (num_iterations * (t / 5))))
+            Q = 1 / (1 + torch.exp(torch.tensor(((10 * t) - (10 * num_iterations)) / (num_iterations * (t / 5)), dtype=torch.float32)))
             ZZ = Q
 
         if iteration >= num_iterations // 2:
