@@ -204,7 +204,7 @@ class ASPP(nn.Module):
         rate1, rate2, rate3 = tuple(atrous_rates)
         modules.append(ASPPConv(in_channels, out_channels, rate1))
         modules.append(ASPPConv(in_channels, out_channels, rate2))
-        # modules.append(ASPPConv(in_channels, out_channels, rate3))
+        modules.append(ASPPConv(in_channels, out_channels, rate3))
         
         # Image pooling layer
         modules.append(ASPPPooling(in_channels, out_channels))
@@ -225,7 +225,7 @@ class ASPP(nn.Module):
         
         # Combine results into a single tensor
         self.project = nn.Sequential(
-            nn.Conv2d(5 * out_channels, out_channels, 1, bias=False),
+            nn.Conv2d(6 * out_channels, out_channels, 1, bias=False),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
             nn.Dropout(0.1)
