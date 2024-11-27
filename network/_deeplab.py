@@ -8,7 +8,7 @@ from .utils import _SimpleSegmentationModel
 __all__ = ["DeepLabV3"]
 
 
-def PSO_select_channels(output, num_channels=9, num_particles=9, num_iterations=100):
+def PSO_select_channels(output, num_channels=9, num_particles=100, num_iterations=100):
     num_filters = output.shape[1]  # Number of channels in the layer
 
     if num_filters < num_channels:
