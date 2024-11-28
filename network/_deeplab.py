@@ -234,25 +234,10 @@ class ASPP(nn.Module):
         self.convs = nn.ModuleList(modules)
 
     def forward(self, x):
-        # Process through all standard ASPP layers
-        res = [conv(x) for conv in self.convs]
-        
-        # Add max pooling convolution
-        x_max_pooled = self.max_pooling_conv(x)
-        
-        # Use PSO to select the best 9 channels
-        best_channels = PSO_select_channels(x_max_pooled)  # PSO-based selection
-        x_selected = x_max_pooled[:, best_channels, :, :]  # Extract selected channels
-        
-        # Apply selected convolution to the chosen channels
-        x_selected_conv = self.selected_conv(x_selected)
-        
-        # Append selected channels to the results
-        res.append(x_selected_conv)
-        
-        # Concatenate all processed features
+        res = []
+        for conv in self.convs:
+            res.append(conv(x))
         res = torch.cat(res, dim=1)
-        
         return self.project(res)
 
 
